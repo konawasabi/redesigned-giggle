@@ -83,31 +83,29 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
     r_prim = [prim['pX'],prim['pY'],prim['pZ']]
     
     if (prim['pP'] == 1): # 直方体
-        #tmp_cross = False
-        #tmp_dist = dist
-        tmp_vec_list = [[[1, 0, 0], [prim['pa'], 0, 0]],\
-                         [[0, 1, 0], [0, prim['pb'], 0]],\
-                         [[0, 0, 1], [0, 0, prim['pc']]],\
-                         [[-1, 0, 0], [-1.0*prim['pa'], 0, 0]],\
-                         [[0, -1, 0], [0, -1.0*prim['pb'], 0]],\
-                         [[0, 0, -1], [0, 0, -1.0*prim['pc']]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
+        tmp_vec_list = [ [[1, 0, 0],  [prim['pa'], 0, 0],      [0, 1, 1]],\
+                         [[0, 1, 0],  [0, prim['pb'], 0],      [1, 0, 1]],\
+                         [[0, 0, 1],  [0, 0, prim['pc']],      [1, 1, 0]],\
+                         [[-1, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
+                         [[0, -1, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
+                         [[0, 0, -1], [0, 0, -1.0*prim['pc']],  [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
         for tmp_vecs in tmp_vec_list:
             r_vp_prim = vec_subtract(vec_sum(r_prim, tmp_vecs[1]), r_view)
             tmp = inner_product(tmp_vecs[0] ,e_view) * sign(prim["pSG"])
             if (tmp < 0): # 内積が<0なら、平面の表側から入射
                 tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) / tmp
                 crosspoint = vec_sum(vec_scale(e_view, tmp_dist_tmp), r_view) #交点の座標
-                if (is_contain(prim,crosspoint) == True):
-                    #tmp_cross = True
-                    #tmp_dist = tmp_dist_tmp
-                    #if(tmp_dist_tmp < tmp_dist):
-                    #    tmp_dist = tmp_dist_tmp
+                rel_cross = vec_subtract(crosspoint, r_prim)
+                tmp_param = [prim['pa'],prim['pb'],prim['pc']]
+                tmp_contain = True
+                for i in [0, 1, 2]:
+                    if(tmp_vecs[2][i] == 1 and abs(rel_cross[i]) > tmp_param[i]):
+                        tmp_contain = False
+                        break
+                if (tmp_contain == True):
                     cross = True
                     dist = tmp_dist_tmp
                     break
-        #if(tmp_cross == True):
-            #cross = True
-            #dist = tmp_dist
         
     elif(prim['pP'] == 2): # 平面
         norm = [prim['pa'],prim['pb'],prim['pc']]
@@ -285,7 +283,7 @@ def mainloop():
     img.save('result.png')
 
 
-f = open("shuttle_tube.sld")
+f = open("sld_orig/tron.sld")
 buffer = f.read().split()
 f.close()
 
