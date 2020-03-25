@@ -83,10 +83,8 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
     r_prim = [prim['pX'],prim['pY'],prim['pZ']]
     
     if (prim['pP'] == 1): # 直方体
-        dist = 1e15
-        
-        tmp_cross = False
-        tmp_dist = dist
+        #tmp_cross = False
+        #tmp_dist = dist
         tmp_vec_list = [[[1, 0, 0], [prim['pa'], 0, 0]],\
                          [[0, 1, 0], [0, prim['pb'], 0]],\
                          [[0, 0, 1], [0, 0, prim['pc']]],\
@@ -100,13 +98,16 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
                 tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) / tmp
                 crosspoint = vec_sum(vec_scale(e_view, tmp_dist_tmp), r_view) #交点の座標
                 if (is_contain(prim,crosspoint) == True):
-                    tmp_cross = True
-                    tmp_dist = tmp_dist_tmp
+                    #tmp_cross = True
+                    #tmp_dist = tmp_dist_tmp
                     #if(tmp_dist_tmp < tmp_dist):
                     #    tmp_dist = tmp_dist_tmp
-        if(tmp_cross == True):
-            cross = True
-            dist = tmp_dist
+                    cross = True
+                    dist = tmp_dist_tmp
+                    break
+        #if(tmp_cross == True):
+            #cross = True
+            #dist = tmp_dist
         
     elif(prim['pP'] == 2): # 平面
         norm = [prim['pa'],prim['pb'],prim['pc']]
@@ -155,14 +156,22 @@ def is_contain(prim, r_cross):
     rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
     
     if (prim['pP'] == 1): # 直方体
-        if(rel_cross[0] <= prim['pa'] and rel_cross[1] <= prim['pb'] and rel_cross[2] <= prim['pc'] and\
-        rel_cross[0] >= -1.0*prim['pa'] and rel_cross[1] >= -1.0*prim['pb'] and rel_cross[2] >= -1.0*prim['pc']):
-            if(prim['pSG']>0):
-                result = True
-        elif(rel_cross[0] >= prim['pa'] and rel_cross[1] >= prim['pb'] and rel_cross[2] >= prim['pc'] and\
-        rel_cross[0] <= -1.0*prim['pa'] and rel_cross[1] <= -1.0*prim['pb'] and rel_cross[2] <= -1.0*prim['pc']):
-            if(prim['pSG']<0):
-                result = True
+        if(abs(rel_cross[0]) <= prim['pa'] and\
+        abs(rel_cross[1]) <= prim['pb'] and\
+        abs(rel_cross[2]) <= prim['pc'] and prim['pSG']>0):
+            result = True
+        elif(abs(rel_cross[0]) > prim['pa'] and\
+        abs(rel_cross[1]) > prim['pb'] and\
+        abs(rel_cross[2]) > prim['pc'] and prim['pSG']<0):
+            result = True
+        #if(rel_cross[0] <= prim['pa'] and rel_cross[1] <= prim['pb'] and rel_cross[2] <= prim['pc'] and\
+        #rel_cross[0] >= -1.0*prim['pa'] and rel_cross[1] >= -1.0*prim['pb'] and rel_cross[2] >= -1.0*prim['pc']):
+            #if(prim['pSG']>0):
+                #result = True
+        #elif(rel_cross[0] >= prim['pa'] and rel_cross[1] >= prim['pb'] and rel_cross[2] >= prim['pc'] and\
+        #rel_cross[0] <= -1.0*prim['pa'] and rel_cross[1] <= -1.0*prim['pb'] and rel_cross[2] <= -1.0*prim['pc']):
+            #if(prim['pSG']<0):
+                #result = True
                 
     elif(prim['pP'] == 2): # 平面
         norm = [prim['pa'],prim['pb'],prim['pc']]
@@ -196,6 +205,7 @@ def is_contain(prim, r_cross):
     return result
 
 def trace(e_view,r_view):
+    #from IPython.core.debugger import Pdb; Pdb().set_trace()
     min_dist = 1e15
     result = False
     prim_id = -1
@@ -229,8 +239,6 @@ def trace(e_view,r_view):
                             min_dist = tmp_min_dist
                             prim_id = tmp_prim_id
                             break
-
-
     if((min_dist > 1e14) or (min_dist < 0)):
         result = False
     else:
@@ -238,6 +246,7 @@ def trace(e_view,r_view):
     return result, min_dist, prim_id
     
 def mainloop():
+    #from IPython.core.debugger import Pdb; Pdb().set_trace()
     screen_width = 256
     screen_height = 256
     width_offset = screen_width / 2.0
@@ -260,12 +269,12 @@ def mainloop():
         for scr_x in range(0,screen_width):
             rel_screenpoint[0] = (scr_x - width_offset) * dx
             
-            tmp = rot_x(rel_screenpoint,math.radians(viewangle[0]))
-            tmp = rot_y(tmp,math.radians(viewangle[1]))
-            abs_screenpoint = vec_sum(tmp,viewplane)
+            tmp_relsc = rot_x(rel_screenpoint,math.radians(viewangle[0]))
+            tmp_relsc = rot_y(tmp_relsc,math.radians(viewangle[1]))
+            abs_screenpoint = vec_sum(tmp_relsc,viewplane)
             
-            tmp = vec_subtract(abs_screenpoint, abs_viewpoint)
-            elem_view = vec_scale(tmp, 1.0/vec_length(tmp))
+            tmp_elem = vec_subtract(abs_screenpoint, abs_viewpoint)
+            elem_view = vec_scale(tmp_elem, 1.0/vec_length(tmp_elem))
             
             result, min_dist, prim_id = trace(elem_view,abs_viewpoint)
             if(result == True):
@@ -276,7 +285,7 @@ def mainloop():
     img.save('result.png')
 
 
-f = open("piero1_box.sld")
+f = open("shuttle_tube.sld")
 buffer = f.read().split()
 f.close()
 
