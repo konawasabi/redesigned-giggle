@@ -88,12 +88,12 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
                          [[0, 0, 1],  [0, 0, prim['pc']],      [1, 1, 0]],\
                          [[-1, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
                          [[0, -1, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
-                         [[0, 0, -1], [0, 0, -1.0*prim['pc']],  [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
+                         [[0, 0, -1], [0, 0, -1.0*prim['pc']], [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
         for tmp_vecs in tmp_vec_list:
             r_vp_prim = vec_subtract(vec_sum(r_prim, tmp_vecs[1]), r_view)
             tmp = inner_product(tmp_vecs[0] ,e_view) * sign(prim["pSG"])
             if (tmp < 0): # 内積が<0なら、平面の表側から入射
-                tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) / tmp
+                tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) * sign(prim["pSG"]) / tmp
                 crosspoint = vec_sum(vec_scale(e_view, tmp_dist_tmp), r_view) #交点の座標
                 rel_cross = vec_subtract(crosspoint, r_prim)
                 tmp_param = [prim['pa'],prim['pb'],prim['pc']]
@@ -158,9 +158,9 @@ def is_contain(prim, r_cross):
         abs(rel_cross[1]) <= prim['pb'] and\
         abs(rel_cross[2]) <= prim['pc'] and prim['pSG']>0):
             result = True
-        elif(abs(rel_cross[0]) > prim['pa'] and\
-        abs(rel_cross[1]) > prim['pb'] and\
-        abs(rel_cross[2]) > prim['pc'] and prim['pSG']<0):
+        elif((abs(rel_cross[0]) > prim['pa'] or\
+        abs(rel_cross[1]) > prim['pb'] or\
+        abs(rel_cross[2]) > prim['pc']) and prim['pSG']<0):
             result = True
         #if(rel_cross[0] <= prim['pa'] and rel_cross[1] <= prim['pb'] and rel_cross[2] <= prim['pc'] and\
         #rel_cross[0] >= -1.0*prim['pa'] and rel_cross[1] >= -1.0*prim['pb'] and rel_cross[2] >= -1.0*prim['pc']):
@@ -283,7 +283,8 @@ def mainloop():
     img.save('result.png')
 
 
-f = open("sld_orig/tron.sld")
+f = open("sld_orig/shuttle.sld")
+#f = open("shuttle_tube_3-4-23.sld")
 buffer = f.read().split()
 f.close()
 
