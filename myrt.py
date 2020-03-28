@@ -243,6 +243,40 @@ def trace(e_view,r_view):
         result = True
     return result, min_dist, prim_id
     
+def texture(prim, r_cross):
+    color = (int(prim['pR']), int(prim['pG']), int(prim['pB'])) #pTX == 0: 単色 の場合
+    if (prim['pTX'] == 1): # x-z平面のチェッカー
+        r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
+        rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
+        tmp = True
+        if(10.0 < rel_cross[0] % 20.0):
+            tmp = not tmp
+        if(10.0 < rel_cross[2] % 20.0):
+            tmp = not tmp
+        if(tmp == True):
+            color = (int(prim['pR']), int(255.0), int(prim['pB']))
+        else:
+            color = (int(prim['pR']), int(0), int(prim['pB']))
+            
+    elif (prim['pTX'] == 2): # y軸方向のストライプ
+        tmp = (math.sin(r_cross[1] * 0.25))**2
+        color = (int(255*tmp), int(255*(1-tmp)), int(prim['pB']))
+        
+    elif (prim['pTX'] == 3): # x-z平面の同心円
+        r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
+        rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
+        
+        tmp = math.sqrt(rel_cross[0]**2 + rel_cross[2]**2)*0.1
+        tmp1 = math.pi * ( (tmp - math.floor(tmp)) )
+        tmp2 = (math.cos(tmp1))**2
+        color = (int(prim['pR']), int(255*tmp2), int(255*(1-tmp2)))
+    
+    elif (prim['pTX'] == 4): # 球面上の班点
+        dump=0
+    elif (prim['pTX'] == 5): # 10x10x10のチェッカー
+        dump=0
+    return color
+    
 def mainloop():
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
     screen_width = 256
@@ -276,14 +310,15 @@ def mainloop():
             
             result, min_dist, prim_id = trace(elem_view,abs_viewpoint)
             if(result == True):
-                img.putpixel((scr_x,scr_y), (int(primitives[prim_id]['pR']), int(primitives[prim_id]['pG']), int(primitives[prim_id]['pB'])))
+                crosspoint = vec_sum(vec_scale(elem_view, min_dist), abs_viewpoint)
+                img.putpixel((scr_x,scr_y), texture(primitives[prim_id], crosspoint))
             else:
                 img.putpixel((scr_x,scr_y), (0, 0, 0))
 
     img.save('result.png')
 
 
-f = open("sld_orig/shuttle.sld")
+f = open("sld_orig/contest.sld")
 #f = open("shuttle_tube_3-4-23.sld")
 buffer = f.read().split()
 f.close()
