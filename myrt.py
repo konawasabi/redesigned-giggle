@@ -350,105 +350,122 @@ def mainloop():
     img.save('result.png')
 
 
-#f = open("sld_orig/tileball.sld")
-f = open("hanten-ball.sld")
-buffer = f.read().split()
-f.close()
-
-index=0
 viewplane=[]
-viewplane.append(float(buffer[index]))
-index=index+1
-viewplane.append(float(buffer[index]))
-index=index+1
-viewplane.append(float(buffer[index]))
-
 viewangle=[]
-index=index+1
-viewangle.append(float(buffer[index]))
-index=index+1
-viewangle.append(float(buffer[index]))
-
-index=index+1
-ls_num = float(buffer[index])
-
+ls_num = 0
 ls_vec=[]
-ls_vec.append(0)
-index=index+1
-ls_vec.append(float(buffer[index]))
-index=index+1
-ls_vec.append(float(buffer[index]))
-
-index=index+1
-beam_higlight = float(buffer[index])
-
+beam_higlight = 0
 primitives=[]
-prim_keys_int=[]
-prim_keys_int.append("pTX")
-prim_keys_int.append("pP")
-prim_keys_int.append("pSF")
-prim_keys_int.append("pRT")
-prim_keys=[]
-prim_keys.append("pa")
-prim_keys.append("pb")
-prim_keys.append("pc")
-prim_keys.append("pX")
-prim_keys.append("pY")
-prim_keys.append("pZ")
-prim_keys.append("pSG")
-prim_keys.append("pREF")
-prim_keys.append("pHL")
-prim_keys.append("pR")
-prim_keys.append("pG")
-prim_keys.append("pB")
+prims_AND = []
+prims_OR = []
+    
+def load_data(filename):
+    global viewplane
+    global viewangle
+    global ls_num
+    global ls_vec
+    global beam_higlight
+    global primitives
+    global prims_AND
+    global prims_OR
+    
+    f = open(filename)
+    buffer = f.read().split()
+    f.close()
 
-index=index+1
-while True:
-    prim_temp = {}
-    for key in prim_keys_int:
-        prim_temp[key]=int(buffer[index])
-        index=index+1
-    for key in prim_keys:
-        prim_temp[key]=float(buffer[index])
-        index=index+1
-    if(prim_temp['pRT']==1):
-        for key in ['pRoX','pRoY','pRoZ']:
+    index=0
+
+    viewplane.append(float(buffer[index]))
+    index=index+1
+    viewplane.append(float(buffer[index]))
+    index=index+1
+    viewplane.append(float(buffer[index]))
+
+    index=index+1
+    viewangle.append(float(buffer[index]))
+    index=index+1
+    viewangle.append(float(buffer[index]))
+
+    index=index+1
+    ls_num = float(buffer[index])
+
+    ls_vec.append(0)
+    index=index+1
+    ls_vec.append(float(buffer[index]))
+    index=index+1
+    ls_vec.append(float(buffer[index]))
+
+    index=index+1
+    beam_higlight = float(buffer[index])
+
+    prim_keys_int=[]
+    prim_keys_int.append("pTX")
+    prim_keys_int.append("pP")
+    prim_keys_int.append("pSF")
+    prim_keys_int.append("pRT")
+    prim_keys=[]
+    prim_keys.append("pa")
+    prim_keys.append("pb")
+    prim_keys.append("pc")
+    prim_keys.append("pX")
+    prim_keys.append("pY")
+    prim_keys.append("pZ")
+    prim_keys.append("pSG")
+    prim_keys.append("pREF")
+    prim_keys.append("pHL")
+    prim_keys.append("pR")
+    prim_keys.append("pG")
+    prim_keys.append("pB")
+
+    index=index+1
+    while True:
+        prim_temp = {}
+        for key in prim_keys_int:
+            prim_temp[key]=int(buffer[index])
+            index=index+1
+        for key in prim_keys:
             prim_temp[key]=float(buffer[index])
             index=index+1
-    primitives.append(prim_temp)
-    
-    if(buffer[index] == '-1'):
-        break
+        if(prim_temp['pRT']==1):
+            for key in ['pRoX','pRoY','pRoZ']:
+                prim_temp[key]=float(buffer[index])
+                index=index+1
+        primitives.append(prim_temp)
+        
+        if(buffer[index] == '-1'):
+            break
 
-prims_AND = []
-index=index+1
+    index=index+1
 
-while True:
-    if(buffer[index] == '-1'):
-        index=index+1
-        break
-    prAND_temp = []
     while True:
         if(buffer[index] == '-1'):
             index=index+1
             break
-        prAND_temp.append(int(buffer[index]))
-        index=index+1
-    prims_AND.append(prAND_temp)
-    
-prims_OR = []
+        prAND_temp = []
+        while True:
+            if(buffer[index] == '-1'):
+                index=index+1
+                break
+            prAND_temp.append(int(buffer[index]))
+            index=index+1
+        prims_AND.append(prAND_temp)
+        
 
-while True:
-    if(buffer[index] == '-1'):
-        index=index+1
-        break
-    temp = []
     while True:
         if(buffer[index] == '-1'):
             index=index+1
             break
-        temp.append(int(buffer[index]))
-        index=index+1
-    prims_OR.append(temp)
+        temp = []
+        while True:
+            if(buffer[index] == '-1'):
+                index=index+1
+                break
+            temp.append(int(buffer[index]))
+            index=index+1
+        prims_OR.append(temp)
 
-mainloop()
+
+if (__name__ == '__main__'):
+    load_data("sld_orig/dra.sld")
+    #load_data("hanten-ball.sld")
+    mainloop()
