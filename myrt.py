@@ -272,9 +272,41 @@ def texture(prim, r_cross):
         color = (int(prim['pR']), int(255*tmp2), int(255*(1-tmp2)))
     
     elif (prim['pTX'] == 4): # 球面上の班点
-        dump=0
+        r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
+        rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
+        t_param = [prim['pa'],prim['pb'],prim['pc']]
+        tmp0 = []
+        for i in [0,1,2]:
+            tmp0.append(rel_cross[i] / t_param[i]) # プリミティブを単位球に見立てる(?)
+        tmp1 = math.sqrt(tmp0[0]**2 + tmp0[2]**2) # y= tmp0[1]面で切断した時の断面の半径
+        if(0.0001 < abs(tmp0[0])):
+            tmp2 = math.atan(abs(tmp0[2]/tmp0[0])) * 9.549296585514
+        else:
+            tmp2 = 15.0
+        if(0.0001 < abs(tmp1)):
+            tmp3 = math.atan(abs(tmp0[1]/tmp1)) * 9.549296585514
+        else:
+            tmp3 = 15.0
+        tmp4 = 0.15 - ((0.5 - (tmp2 - math.floor(tmp2)))**2 + (0.5 - (tmp3 - math.floor(tmp3)))**2)
+        if(tmp4 <= 0):
+            color = (int(prim['pR']), int(prim['pG']), int(0))
+        else:
+            color = (int(prim['pR']), int(prim['pG']), int(256/0.3 * tmp4))
+        
     elif (prim['pTX'] == 5): # 10x10x10のチェッカー
-        dump=0
+        r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
+        rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
+        tmp = True
+        if(10.0 < rel_cross[0] % 20.0):
+            tmp = not tmp
+        if(10.0 < rel_cross[1] % 20.0):
+            tmp = not tmp
+        if(10.0 < rel_cross[2] % 20.0):
+            tmp = not tmp
+        if(tmp == True):
+            color = (int(prim['pR']), int(255.0), int(prim['pB']))
+        else:
+            color = (int(prim['pR']), int(0), int(prim['pB']))
     return color
     
 def mainloop():
@@ -318,8 +350,8 @@ def mainloop():
     img.save('result.png')
 
 
-f = open("sld_orig/contest.sld")
-#f = open("shuttle_tube_3-4-23.sld")
+#f = open("sld_orig/tileball.sld")
+f = open("hanten-ball.sld")
 buffer = f.read().split()
 f.close()
 
