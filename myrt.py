@@ -309,6 +309,38 @@ def texture(prim, r_cross):
             color = (int(prim['pR']), int(0), int(prim['pB']))
     return color
     
+def normal_vector(prim, r_cross, e_view):
+    result = [0,0,0]
+    tmp_param = [prim['pa'],prim['pb'],prim['pc']]
+    r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
+    rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
+    if(prim['pP'] == 1):
+        tmp_vec_list = [ [[1, 0, 0],  [prim['pa'], 0, 0],      [0, 1, 1]],\
+                         [[0, 1, 0],  [0, prim['pb'], 0],      [1, 0, 1]],\
+                         [[0, 0, 1],  [0, 0, prim['pc']],      [1, 1, 0]],\
+                         [[-1, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
+                         [[0, -1, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
+                         [[0, 0, -1], [0, 0, -1.0*prim['pc']], [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
+        for tmp_vecs in tmp_vec_list:
+            tmp = inner_product(tmp_vecs[0] ,e_view) * sign(prim["pSG"])
+            if (tmp < 0): # 内積が<0なら、平面の表側から入射
+                result = vec_scale(tmp_vecs[0], sign(prim["pSG"]))
+    elif(prim['pP'] == 2):
+        result = vec_scale(tmp_param, sign(prim["pSG"]))
+    elif(prim['pP'] == 3):
+        for i in [0,1,2]:
+            if (tmp_param[i] != 0):
+                result[i] = rel_cross[i] / (tmp_param[i])**2 * sign(tmp_param[i])
+            else:
+                result[i] = 0
+        result = vec_scale(result, 1.0/vec_length(result)*sign(prim['pSG']))
+    elif(prim['pP'] == 4):
+        for i in [0,1,2]:
+            result[i] = rel_cross[i] * tmp_param[i]
+        result = vec_scale(result, 1.0/vec_length(result)*sign(prim['pSG']))
+        
+    return result
+    
 def mainloop():
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
     screen_width = 256
@@ -331,6 +363,7 @@ def mainloop():
         rel_screenpoint = [0.0, 0.0, 0.0]
         rel_screenpoint[1] = (height_offset - scr_y) * dy
         for scr_x in range(0,screen_width):
+            abs_viewpoint = vec_sum(rel_viewpoint,viewplane)
             rel_screenpoint[0] = (scr_x - width_offset) * dx
             
             tmp_relsc = rot_x(rel_screenpoint,math.radians(viewangle[0]))
@@ -340,12 +373,77 @@ def mainloop():
             tmp_elem = vec_subtract(abs_screenpoint, abs_viewpoint)
             elem_view = vec_scale(tmp_elem, 1.0/vec_length(tmp_elem))
             
-            result, min_dist, prim_id = trace(elem_view,abs_viewpoint)
-            if(result == True):
+            color = [0, 0, 0]
+            energy = 1.0
+            reflex = 0
+            while True:
+                result, min_dist, prim_id = trace(elem_view,abs_viewpoint)
+                
+                if(result == False):
+                    if(reflex != 0):
+                        cos_highlight = -1.0*inner_product(elem_view, ls_vec)
+                        if(cos_highlight < 0):
+                            cos_highlight = 0.0
+                        highlight = cos_highlight**2 * energy * cos_highlight * beam_higlight
+                        color[0] += int(highlight)
+                        color[1] += int(highlight)
+                        color[2] += int(highlight)
+                    break
+                
                 crosspoint = vec_sum(vec_scale(elem_view, min_dist), abs_viewpoint)
-                img.putpixel((scr_x,scr_y), texture(primitives[prim_id], crosspoint))
-            else:
-                img.putpixel((scr_x,scr_y), (0, 0, 0))
+                vec_normal = normal_vector(primitives[prim_id], crosspoint,elem_view)
+                
+                abs_viewpoint = crosspoint
+                
+                tmp_bright1 = inner_product(vec_normal, ls_vec)
+                if(tmp_bright1 > 0):
+                    tmp_bright1 = 0.0
+                brightness = (0.2 - tmp_bright1) * energy * primitives[prim_id]['pREF']
+                
+                # シャドウの評価
+                
+                tmp_color = [0, 0, 0]
+                if(brightness != 0.0):
+                    tmp_color = texture(primitives[prim_id], crosspoint)
+                
+                #brightness=1
+                for i in [0,1,2]:
+                    color[i] += int(math.floor(brightness * tmp_color[i]))
+                
+                if(energy < 0.1 or reflex > 4):
+                    break
+                
+                if(primitives[prim_id]['pSF'] == 1): #乱反射
+                    if(primitives[prim_id]['pHL'] > 0):
+                        tmp_new_eview = -2.0 * inner_product(elem_view,vec_normal)
+                        elem_view = vec_sum(elem_view, vec_scale(vec_normal, tmp_new_eview))
+                        cos_highlight = -1.0*inner_product(elem_view, ls_vec)
+                        if(cos_highlight < 0):
+                            cos_highlight = 0.0
+                        highlight = cos_highlight**4 * energy * brightness * primitives[prim_id]['pHL']
+                        color[0] += int(highlight)
+                        color[1] += int(highlight)
+                        color[2] += int(highlight)
+                    break
+                elif(primitives[prim_id]['pSF'] == 2): #鏡面
+                    energy *= (1.0 - primitives[prim_id]['pREF'])
+                    tmp_new_eview = -2.0 * inner_product(elem_view,vec_normal)
+                    elem_view = vec_sum(elem_view, vec_scale(vec_normal, tmp_new_eview))
+                else:
+                    break
+                reflex +=1
+                    
+            for i in [0,1,2]:
+                if(color[i] > 255):
+                    color[i] = 255
+                else:
+                    color[i] = int(color[i])
+            img.putpixel((scr_x,scr_y), (color[0], color[1], color[2]))
+#            if(result == True):
+#                crosspoint = vec_sum(vec_scale(elem_view, min_dist), abs_viewpoint)
+#                img.putpixel((scr_x,scr_y), texture(primitives[prim_id], crosspoint))
+#            else:
+#                img.putpixel((scr_x,scr_y), (0, 0, 0))
 
     img.save('result.png')
 
@@ -389,11 +487,15 @@ def load_data(filename):
     index=index+1
     ls_num = float(buffer[index])
 
-    ls_vec.append(0)
+    ls_tmp = []
     index=index+1
-    ls_vec.append(float(buffer[index]))
+    ls_tmp.append(math.radians(float(buffer[index])))
     index=index+1
-    ls_vec.append(float(buffer[index]))
+    ls_tmp.append(math.radians(float(buffer[index])))
+    
+    ls_vec.append(math.sin(ls_tmp[1]) * math.cos(ls_tmp[0]))
+    ls_vec.append(-math.sin(ls_tmp[0]))
+    ls_vec.append(math.cos(ls_tmp[1]) * math.cos(ls_tmp[0]))
 
     index=index+1
     beam_higlight = float(buffer[index])
@@ -466,6 +568,6 @@ def load_data(filename):
 
 
 if (__name__ == '__main__'):
-    load_data("sld_orig/dra.sld")
+    load_data("sld_orig/contest.sld")
     #load_data("hanten-ball.sld")
     mainloop()
