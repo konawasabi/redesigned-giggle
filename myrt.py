@@ -113,7 +113,7 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
         r_vp_prim = vec_subtract(r_prim,r_view) # 視点に対するプリミティブの位置
         tmp = inner_product(norm, e_view) * sign(prim["pSG"])
         if (tmp < 0): # 内積が<0なら、平面の表側から入射
-            dist = inner_product(norm, r_vp_prim) / tmp
+            dist = inner_product(norm, r_vp_prim) / tmp  * sign(prim["pSG"])
             cross = True
             
     elif(prim['pP'] == 3 or prim['pP'] == 4): # 二次曲面 or 錐
@@ -202,19 +202,24 @@ def is_contain(prim, r_cross):
                 result = True
     return result
 
-def trace(e_view,r_view):
+def trace(e_view,r_view,ref_prim):
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
     min_dist = 1e15
     result = False
     prim_id = -1
+    ref_prim = -1
 
     for or_ids in prims_OR:
+        if(or_ids[0] == ref_prim):
+            continue
         if(or_ids[0] < 99):
             cross, dist = cross_distance(primitives[or_ids[0]],e_view,r_view)
             if((cross == False) or (min_dist <= dist)):
                 continue
         for or_index in or_ids[1:]:
             for and_index in prims_AND[or_index]: # AND定義に含まれるプリミティブで、視点から最も近いものをさがす
+                if(and_index == ref_prim):
+                    break
                 cross, dist = cross_distance(primitives[and_index],e_view,r_view)
                 if(cross == False): #対象のプリミティブと交わらない
                     if(primitives[and_index]['pSG'] > 0): #プリミティブの極性が正 = 視点はプリミティブの外側
@@ -324,7 +329,16 @@ def normal_vector(prim, r_cross, e_view):
         for tmp_vecs in tmp_vec_list:
             tmp = inner_product(tmp_vecs[0] ,e_view) * sign(prim["pSG"])
             if (tmp < 0): # 内積が<0なら、平面の表側から入射
-                result = vec_scale(tmp_vecs[0], sign(prim["pSG"]))
+                rel_cross = vec_subtract(r_cross, r_prim)
+                tmp_param = [prim['pa'],prim['pb'],prim['pc']]
+                tmp_contain = True
+                for i in [0, 1, 2]:
+                    if(tmp_vecs[2][i] == 1 and abs(rel_cross[i]) > tmp_param[i]):
+                        tmp_contain = False
+                        break
+                if (tmp_contain == True):
+                    result = vec_scale(tmp_vecs[0], sign(prim["pSG"]))
+                    break
     elif(prim['pP'] == 2):
         result = vec_scale(tmp_param, sign(prim["pSG"]))
     elif(prim['pP'] == 3):
@@ -376,20 +390,22 @@ def mainloop():
             color = [0, 0, 0]
             energy = 1.0
             reflex = 0
+            ref_prim_id = -1
             while True:
-                result, min_dist, prim_id = trace(elem_view,abs_viewpoint)
+                result, min_dist, prim_id = trace(elem_view,abs_viewpoint,ref_prim_id)
                 
                 if(result == False):
                     if(reflex != 0):
                         cos_highlight = -1.0*inner_product(elem_view, ls_vec)
                         if(cos_highlight < 0):
                             cos_highlight = 0.0
-                        highlight = cos_highlight**2 * energy * cos_highlight * beam_higlight
+                        highlight = cos_highlight**3 * energy * beam_higlight
                         color[0] += int(highlight)
                         color[1] += int(highlight)
                         color[2] += int(highlight)
                     break
                 
+                ref_prim_id = prim_id
                 crosspoint = vec_sum(vec_scale(elem_view, min_dist), abs_viewpoint)
                 vec_normal = normal_vector(primitives[prim_id], crosspoint,elem_view)
                 
@@ -402,7 +418,7 @@ def mainloop():
                 
                 # シャドウの評価
                 
-                tmp_color = [0, 0, 0]
+                tmp_color = [primitives[prim_id]['pR'], primitives[prim_id]['pG'], primitives[prim_id]['pB']]
                 if(brightness != 0.0):
                     tmp_color = texture(primitives[prim_id], crosspoint)
                 
@@ -439,12 +455,6 @@ def mainloop():
                 else:
                     color[i] = int(color[i])
             img.putpixel((scr_x,scr_y), (color[0], color[1], color[2]))
-#            if(result == True):
-#                crosspoint = vec_sum(vec_scale(elem_view, min_dist), abs_viewpoint)
-#                img.putpixel((scr_x,scr_y), texture(primitives[prim_id], crosspoint))
-#            else:
-#                img.putpixel((scr_x,scr_y), (0, 0, 0))
-
     img.save('result.png')
 
 
@@ -568,6 +578,6 @@ def load_data(filename):
 
 
 if (__name__ == '__main__'):
-    load_data("sld_orig/contest.sld")
+    load_data("sld_orig/tron.sld")
     #load_data("hanten-ball.sld")
     mainloop()
