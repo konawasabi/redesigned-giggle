@@ -83,17 +83,17 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
     r_prim = [prim['pX'],prim['pY'],prim['pZ']]
     
     if (prim['pP'] == 1): # 直方体
-        tmp_vec_list = [ [[1, 0, 0],  [prim['pa'], 0, 0],      [0, 1, 1]],\
-                         [[0, 1, 0],  [0, prim['pb'], 0],      [1, 0, 1]],\
-                         [[0, 0, 1],  [0, 0, prim['pc']],      [1, 1, 0]],\
-                         [[-1, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
-                         [[0, -1, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
-                         [[0, 0, -1], [0, 0, -1.0*prim['pc']], [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
+        tmp_vec_list = [ [[1.0, 0, 0],  [prim['pa'], 0, 0],      [0, 1, 1]],\
+                         [[0, 1.0, 0],  [0, prim['pb'], 0],      [1, 0, 1]],\
+                         [[0, 0, 1.0],  [0, 0, prim['pc']],      [1, 1, 0]],\
+                         [[-1.0, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
+                         [[0, -1.0, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
+                         [[0, 0, -1.0], [0, 0, -1.0*prim['pc']], [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
         for tmp_vecs in tmp_vec_list:
             r_vp_prim = vec_subtract(vec_sum(r_prim, tmp_vecs[1]), r_view)
-            tmp = inner_product(tmp_vecs[0] ,e_view) * sign(prim["pSG"])
-            if (tmp < 0): # 内積が<0なら、平面の表側から入射
-                tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) * sign(prim["pSG"]) / tmp
+            tmp = inner_product(tmp_vecs[0] ,e_view)
+            if ((tmp < 0 and sign(prim["pSG"]) > 0) or (tmp > 0 and sign(prim["pSG"]) < 0)): # 内積が<0なら、平面の表側から入射
+                tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) / tmp
                 crosspoint = vec_sum(vec_scale(e_view, tmp_dist_tmp), r_view) #交点の座標
                 rel_cross = vec_subtract(crosspoint, r_prim)
                 tmp_param = [prim['pa'],prim['pb'],prim['pc']]
@@ -320,25 +320,17 @@ def normal_vector(prim, r_cross, e_view):
     r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
     rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
     if(prim['pP'] == 1):
-        tmp_vec_list = [ [[1, 0, 0],  [prim['pa'], 0, 0],      [0, 1, 1]],\
-                         [[0, 1, 0],  [0, prim['pb'], 0],      [1, 0, 1]],\
-                         [[0, 0, 1],  [0, 0, prim['pc']],      [1, 1, 0]],\
-                         [[-1, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
-                         [[0, -1, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
-                         [[0, 0, -1], [0, 0, -1.0*prim['pc']], [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
+        tmp_vec_list = [ [[1.0, 0, 0],  [prim['pa'], 0, 0],      [0, 1, 1]],\
+                         [[0, 1.0, 0],  [0, prim['pb'], 0],      [1, 0, 1]],\
+                         [[0, 0, 1.0],  [0, 0, prim['pc']],      [1, 1, 0]],\
+                         [[-1.0, 0, 0], [-1.0*prim['pa'], 0, 0], [0, 1, 1]],\
+                         [[0, -1.0, 0], [0, -1.0*prim['pb'], 0], [1, 0, 1]],\
+                         [[0, 0, -1.0], [0, 0, -1.0*prim['pc']], [1, 1, 0]]]# tmp_vecs[0]: 各面の法線ベクトル、[1]: 法線ベクトルの位置
         for tmp_vecs in tmp_vec_list:
-            tmp = inner_product(tmp_vecs[0] ,e_view) * sign(prim["pSG"])
-            if (tmp < 0): # 内積が<0なら、平面の表側から入射
-                rel_cross = vec_subtract(r_cross, r_prim)
-                tmp_param = [prim['pa'],prim['pb'],prim['pc']]
-                tmp_contain = True
-                for i in [0, 1, 2]:
-                    if(tmp_vecs[2][i] == 1 and abs(rel_cross[i]) > tmp_param[i]):
-                        tmp_contain = False
-                        break
-                if (tmp_contain == True):
-                    result = vec_scale(tmp_vecs[0], sign(prim["pSG"]))
-                    break
+            tmp = inner_product(tmp_vecs[0], vec_subtract(r_cross, vec_sum(r_prim, tmp_vecs[1]))) # 対象となる法線ペクトルの起点に対する交点の位置ベクトルと、法線ベクトルの内積
+            if(abs(tmp) < 0.001): #交点が対象となる面上にあるなら、上記のベクトルは直交
+                result = vec_scale(tmp_vecs[0], sign(prim["pSG"]))
+                break
     elif(prim['pP'] == 2):
         result = vec_scale(tmp_param, sign(prim["pSG"]))
     elif(prim['pP'] == 3):
@@ -578,6 +570,6 @@ def load_data(filename):
 
 
 if (__name__ == '__main__'):
-    load_data("sld_orig/tron.sld")
+    load_data("sld_orig/piero2.sld")
     #load_data("hanten-ball.sld")
     mainloop()
