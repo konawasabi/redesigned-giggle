@@ -79,6 +79,7 @@ def rot_z_1st(vec, theta):
 def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティプ、e_view: 視線の単位ベクトル、r_view: 視点の位置ベクトル
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
     cross = False
+    back_nc = False
     dist = 1e15
     r_prim = [prim['pX'],prim['pY'],prim['pZ']]
     
@@ -92,7 +93,7 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
         for tmp_vecs in tmp_vec_list:
             r_vp_prim = vec_subtract(vec_sum(r_prim, tmp_vecs[1]), r_view)
             tmp = inner_product(tmp_vecs[0] ,e_view)
-            if ((tmp < 0 and sign(prim["pSG"]) > 0) or (tmp > 0 and sign(prim["pSG"]) < 0)): # 内積が<0なら、平面の表側から入射
+            if ((tmp < -0.001 and sign(prim["pSG"]) > 0) or (tmp > 0.001 and sign(prim["pSG"]) < 0)): # 内積が<0なら、平面の表側から入射
                 tmp_dist_tmp = inner_product(tmp_vecs[0], r_vp_prim) / tmp
                 crosspoint = vec_sum(vec_scale(e_view, tmp_dist_tmp), r_view) #交点の座標
                 rel_cross = vec_subtract(crosspoint, r_prim)
@@ -111,10 +112,12 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
         norm = [prim['pa'],prim['pb'],prim['pc']]
         norm = vec_scale(norm, 1/vec_length(norm))
         r_vp_prim = vec_subtract(r_prim,r_view) # 視点に対するプリミティブの位置
-        tmp = inner_product(norm, e_view) * sign(prim["pSG"])
-        if (tmp < 0): # 内積が<0なら、平面の表側から入射
-            dist = inner_product(norm, r_vp_prim) / tmp  * sign(prim["pSG"])
+        tmp = inner_product(norm, e_view)
+        if ((tmp < -1e-3 and sign(prim["pSG"]) > 0) or (tmp > 1e-3 and sign(prim["pSG"]) < 0)): # 内積が<0なら、平面の表側から入射
+            dist = inner_product(norm, r_vp_prim) / tmp
             cross = True
+        elif((tmp > 1e-3 and sign(prim["pSG"]) > 0) or (tmp < -1e-3 and sign(prim["pSG"]) < 0)): # 内積が>0なら、平面の表側から入射
+            back_nc = True
             
     elif(prim['pP'] == 3 or prim['pP'] == 4): # 二次曲面 or 錐
         parameter = []
@@ -145,7 +148,7 @@ def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティ
                 dist = (math.sqrt(tmp)-B)/A
             cross = True
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
-    return cross, dist
+    return cross, dist, back_nc
 
 def is_contain(prim, r_cross):
     result = False
@@ -210,22 +213,29 @@ def trace(e_view,r_view,ref_prim):
     ref_prim = -1
 
     for or_ids in prims_OR:
-        if(or_ids[0] == ref_prim):
-            continue
+        #if(or_ids[0] == ref_prim):
+        #    continue
         if(or_ids[0] < 99):
-            cross, dist = cross_distance(primitives[or_ids[0]],e_view,r_view)
+            cross, dist, back_nc = cross_distance(primitives[or_ids[0]],e_view,r_view)
             if((cross == False) or (min_dist <= dist)):
                 continue
         for or_index in or_ids[1:]:
             for and_index in prims_AND[or_index]: # AND定義に含まれるプリミティブで、視点から最も近いものをさがす
-                if(and_index == ref_prim):
-                    break
-                cross, dist = cross_distance(primitives[and_index],e_view,r_view)
-                if(cross == False): #対象のプリミティブと交わらない
-                    if(primitives[and_index]['pSG'] > 0): #プリミティブの極性が正 = 視点はプリミティブの外側
-                        break #上記条件を満たすプリミティブが存在 = 対象のAND定義とは交わらない
-                    else:
-                        continue
+                #if(and_index == ref_prim):
+                #    break
+                cross, dist, back_nc = cross_distance(primitives[and_index],e_view,r_view)
+                if(primitives[and_index]['pP'] == 2): #対象となるプリミティブが平面
+                    if(cross == False):
+                        if(back_nc == True): # 視線が平面の裏から入射
+                            continue
+                        else: #視線が法線と平行
+                            break
+                else: #それ以外
+                    if(cross == False): #対象のプリミティブと交わらない
+                        if(primitives[and_index]['pSG'] > 0): #プリミティブの極性が正 = 視点はプリミティブの外側
+                            break #上記条件を満たすプリミティブが存在 = 対象のAND定義とは交わらない
+                        else:
+                            continue
                 if((min_dist <= dist) or (dist < 0)): #すでに別のプリミティブと交差 or 視点の背後で交差
                     continue
                 
@@ -571,5 +581,5 @@ def load_data(filename):
 
 if (__name__ == '__main__'):
     load_data("sld_orig/piero2.sld")
-    #load_data("hanten-ball.sld")
+    #load_data("piero2_la.sld")
     mainloop()
