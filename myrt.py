@@ -239,6 +239,7 @@ def trace(e_view,r_view,ref_prim):
                 if((min_dist <= dist) or (dist < 0)): #すでに別のプリミティブと交差 or 視点の背後で交差
                     continue
                 
+                #dist+=0.01
                 crosspoint = vec_sum(vec_scale(e_view, dist), r_view) #交点の座標
                     
                 tmp_min_dist = min_dist
@@ -264,9 +265,9 @@ def texture(prim, r_cross):
         r_prim = [prim['pX'],prim['pY'],prim['pZ']] # プリミティブの中心座標
         rel_cross = vec_subtract(r_cross, r_prim) # プリミティブ中心に対する交点
         tmp = True
-        if(10.0 < rel_cross[0] % 20.0):
+        if(10 < rel_cross[0] % 20.0):
             tmp = not tmp
-        if(10.0 < rel_cross[2] % 20.0):
+        if(10 < rel_cross[2] % 20.0):
             tmp = not tmp
         if(tmp == True):
             color = (int(prim['pR']), int(255.0), int(prim['pB']))
@@ -409,6 +410,7 @@ def mainloop():
                 
                 ref_prim_id = prim_id
                 crosspoint = vec_sum(vec_scale(elem_view, min_dist), abs_viewpoint)
+                crosspoint_texture =vec_sum(vec_scale(elem_view, min_dist+0.01), abs_viewpoint) #テクスチャの評価用 距離を+0.01
                 vec_normal = normal_vector(primitives[prim_id], crosspoint,elem_view)
                 
                 abs_viewpoint = crosspoint
@@ -422,7 +424,8 @@ def mainloop():
                 
                 tmp_color = [primitives[prim_id]['pR'], primitives[prim_id]['pG'], primitives[prim_id]['pB']]
                 if(brightness != 0.0):
-                    tmp_color = texture(primitives[prim_id], crosspoint)
+                    #tmp_color = texture(primitives[prim_id], crosspoint)
+                    tmp_color = texture(primitives[prim_id], crosspoint_texture)
                 
                 #brightness=1
                 for i in [0,1,2]:
@@ -580,6 +583,6 @@ def load_data(filename):
 
 
 if (__name__ == '__main__'):
-    load_data("sld_orig/piero2.sld")
-    #load_data("piero2_la.sld")
+    load_data("sld_orig/tron.sld")
+    #load_data("tron_yuka.sld")
     mainloop()
