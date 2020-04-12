@@ -259,6 +259,65 @@ def trace(e_view,r_view,ref_prim):
         result = True
     return result, min_dist, prim_id
     
+def trace_shadow(e_view,r_view,ref_prim):
+    #from IPython.core.debugger import Pdb; Pdb().set_trace()
+    min_dist = 1e15
+    result = False
+    prim_id = -1
+    bright = 1.0
+    ref_prim = -1
+
+    for or_ids in prims_OR:
+        if(or_ids[0] < 99):
+            cross, dist, back_nc = cross_distance(primitives[or_ids[0]],e_view,r_view)
+            if((cross == False) or (min_dist <= dist) or (or_ids[0] == ref_prim)):
+                continue
+        for or_index in or_ids[1:]:
+            for and_index in prims_AND[or_index]: # AND定義に含まれるプリミティブで、視点から最も近いものをさがす
+                if(and_index == ref_prim):
+                    break
+                cross, dist, back_nc = cross_distance(primitives[and_index],e_view,r_view)
+                if(primitives[and_index]['pP'] == 2): #対象となるプリミティブが平面
+                    if(cross == False):
+                        if(back_nc == True): # 視線が平面の裏から入射
+                            continue
+                        else: #視線が法線と平行
+                            break
+                else: #それ以外
+                    if(cross == False): #対象のプリミティブと交わらない
+                        if(primitives[and_index]['pSG'] > 0): #プリミティブの極性が正 = 視点はプリミティブの外側
+                            break #上記条件を満たすプリミティブが存在 = 対象のAND定義とは交わらない
+                        else:
+                            continue
+                if(dist > -0.1): #すでに別のプリミティブと交差 or 視点の背後で交差
+                    continue
+                
+                crosspoint = vec_sum(vec_scale(e_view, dist), r_view) #交点の座標
+                    
+                tmp_min_dist = min_dist
+                tmp_prim_id = prim_id
+                tmp_bright = bright
+                
+                min_dist = dist
+                prim_id = and_index
+                
+                if(primitives[prim_id]['pSF'] == 3):
+                    bright -= 0.25
+                else:
+                    bright = 0
+                
+                for contain_index in prims_AND[or_index]: #交点が別のプリミティブの内側にあるか
+                    if (contain_index != and_index):
+                        if(is_contain(primitives[contain_index],crosspoint) == False): #1つでも交点を含まないプリミティブがある
+                            min_dist = tmp_min_dist
+                            prim_id = tmp_prim_id
+                            bright = tmp_bright
+                            break
+    
+    if(bright < 0.0):
+        bright = 0.0
+    return bright
+    
 def texture(prim, r_cross):
     color = (int(prim['pR']), int(prim['pG']), int(prim['pB'])) #pTX == 0: 単色 の場合
     if (prim['pTX'] == 1): # x-z平面のチェッカー
@@ -421,6 +480,7 @@ def mainloop():
                 brightness = (0.2 - tmp_bright1) * energy * primitives[prim_id]['pREF']
                 
                 # シャドウの評価
+                brightness *= trace_shadow(ls_vec,crosspoint,prim_id)
                 
                 tmp_color = [primitives[prim_id]['pR'], primitives[prim_id]['pG'], primitives[prim_id]['pB']]
                 if(brightness != 0.0):
@@ -511,6 +571,7 @@ def load_data(filename):
     ls_vec.append(math.sin(ls_tmp[1]) * math.cos(ls_tmp[0]))
     ls_vec.append(-math.sin(ls_tmp[0]))
     ls_vec.append(math.cos(ls_tmp[1]) * math.cos(ls_tmp[0]))
+    ls_vec = vec_scale(ls_vec, 1/vec_length(ls_vec))
 
     index=index+1
     beam_higlight = float(buffer[index])
