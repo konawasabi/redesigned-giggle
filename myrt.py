@@ -46,36 +46,6 @@ def rot_z(vec, theta):
             vec[0]*math.sin(theta) + vec[1]*math.cos(theta),\
             vec[2]]
 
-def rot_x_2nd(vec, theta):
-    return [vec[0],\
-           vec[1]*math.cos(theta) + vec[2]*math.sin(theta),\
-           -1.0*vec[1]*math.sin(theta) + vec[2]*math.cos(theta)]
-
-def rot_y_2nd(vec, theta):
-    return [vec[0]*math.cos(theta) - vec[2]*math.sin(theta),\
-           vec[1],\
-           vec[0]*math.sin(theta) + vec[2]*math.cos(theta)]
-
-def rot_z_2nd(vec, theta):
-    return [vec[0]*math.cos(theta) + vec[1]*math.sin(theta),\
-           -1.0*vec[0]*math.sin(theta) + vec[1]*math.cos(theta),\
-            vec[2]]
-
-def rot_x_1st(vec, theta):
-    return [vec[0],\
-           vec[1]*math.cos(theta) - vec[2]*math.sin(theta),\
-           -1.0*vec[1]*math.sin(theta) + vec[2]*math.cos(theta)]
-
-def rot_y_1st(vec, theta):
-    return [vec[0]*math.cos(theta) - vec[2]*math.sin(theta),\
-           vec[1],\
-           vec[0]*math.sin(theta) + vec[2]*math.cos(theta)]
-
-def rot_z_1st(vec, theta):
-    return [vec[0]*math.cos(theta) + vec[1]*math.sin(theta),\
-           -1.0*vec[0]*math.sin(theta) + vec[1]*math.cos(theta),\
-            vec[2]]
-
 def cross_distance(prim,e_view,r_view): #prim: 距離を求めるプリミティプ、e_view: 視線の単位ベクトル、r_view: 視点の位置ベクトル
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
     cross = False
@@ -265,7 +235,7 @@ def trace_shadow(e_view,r_view,ref_prim):
     result = False
     prim_id = -1
     bright = 1.0
-    ref_prim = -1
+    ref_prim = -1 #交点が載っているプリミティブを除外するフラグを無効にする
 
     for or_ids in prims_OR:
         if(or_ids[0] < 99):
@@ -289,7 +259,7 @@ def trace_shadow(e_view,r_view,ref_prim):
                             break #上記条件を満たすプリミティブが存在 = 対象のAND定義とは交わらない
                         else:
                             continue
-                if(dist > -0.1): #すでに別のプリミティブと交差 or 視点の背後で交差
+                if(dist > -0.1): #視点の前方で交差 = シャドウとは関係ない
                     continue
                 
                 crosspoint = vec_sum(vec_scale(e_view, dist), r_view) #交点の座標
@@ -301,7 +271,7 @@ def trace_shadow(e_view,r_view,ref_prim):
                 min_dist = dist
                 prim_id = and_index
                 
-                if(primitives[prim_id]['pSF'] == 3):
+                if(primitives[prim_id]['pSF'] == 3): #交差したプリミティブが透明
                     bright -= 0.25
                 else:
                     bright = 0
@@ -417,7 +387,7 @@ def normal_vector(prim, r_cross, e_view):
         
     return result
     
-def mainloop():
+def mainloop(output='result', shadow_flg=True):
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
     screen_width = 256
     screen_height = 256
@@ -480,7 +450,8 @@ def mainloop():
                 brightness = (0.2 - tmp_bright1) * energy * primitives[prim_id]['pREF']
                 
                 # シャドウの評価
-                brightness *= trace_shadow(ls_vec,crosspoint,prim_id)
+                if(shadow_flg == True):
+                    brightness *= trace_shadow(ls_vec,crosspoint,prim_id)
                 
                 tmp_color = [primitives[prim_id]['pR'], primitives[prim_id]['pG'], primitives[prim_id]['pB']]
                 if(brightness != 0.0):
@@ -520,7 +491,7 @@ def mainloop():
                 else:
                     color[i] = int(color[i])
             img.putpixel((scr_x,scr_y), (color[0], color[1], color[2]))
-    img.save('result.png')
+    img.save(output+'.png')
 
 
 viewplane=[]
@@ -531,6 +502,24 @@ beam_higlight = 0
 primitives=[]
 prims_AND = []
 prims_OR = []
+
+def clear_global():
+    global viewplane
+    global viewangle
+    global ls_num
+    global ls_vec
+    global beam_higlight
+    global primitives
+    global prims_AND
+    global prims_OR
+    viewplane=[]
+    viewangle=[]
+    ls_num = 0
+    ls_vec=[]
+    beam_higlight = 0
+    primitives=[]
+    prims_AND = []
+    prims_OR = []
     
 def load_data(filename):
     global viewplane
@@ -644,6 +633,7 @@ def load_data(filename):
 
 
 if (__name__ == '__main__'):
-    load_data("sld_orig/tron.sld")
+    clear_global()
+    load_data("sld_orig/contest.sld")
     #load_data("tron_yuka.sld")
     mainloop()
